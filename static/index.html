@@ -1,131 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VYXBOT v4.0 — Dual Platform</title>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
-        body { background: #0b0e14; color: #e0e6ed; min-height: 100vh; display: flex; justify-content: center; padding: 2rem; }
-        .container { max-width: 780px; width: 100%; }
-        h1 { font-size: 1.6rem; border-bottom: 1px solid #1e293b; padding-bottom: .75rem; margin-bottom: 1.5rem; }
-        h1 span { color: #58a6ff; }
-        .card { background: #131a22; border: 1px solid #1e293b; border-radius: 10px; padding: 1.25rem; margin-bottom: 1rem; }
-        .card-title { font-size: .85rem; text-transform: uppercase; letter-spacing: .05em; color: #8b949e; margin-bottom: 1rem; }
-        label { display: block; font-size: .8rem; color: #8b949e; margin-bottom: .3rem; margin-top: .8rem; }
-        label:first-of-type { margin-top: 0; }
-        input, select, textarea { width: 100%; padding: .6rem .8rem; background: #0b0e14; border: 1px solid #1e293b; border-radius: 6px; color: #e0e6ed; font-size: .9rem; }
-        textarea { resize: vertical; min-height: 60px; }
-        .row { display: flex; gap: .8rem; }
-        .row > * { flex: 1; }
-        .btn { padding: .6rem 1.2rem; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: .85rem; transition: .15s; }
-        .btn-primary { background: #238636; color: #fff; }
-        .btn-primary:hover { background: #2ea043; }
-        .btn-danger { background: #a11; color: #fff; }
-        .btn-danger:hover { background: #c22; }
-        .btn-secondary { background: #1e293b; color: #c9d1d9; }
-        .btn-secondary:hover { background: #273d56; }
-        .btn:disabled { opacity: .4; cursor: not-allowed; }
-        .log-box { background: #070a0f; border: 1px solid #1e293b; border-radius: 6px; padding: .6rem; height: 200px; overflow-y: auto; font-family: 'JetBrains Mono', monospace; font-size: .75rem; }
-        .log-box p { padding: 2px 0; border-bottom: 1px solid #111920; }
-        .log-time { color: #58a6ff; }
-        .badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: .7rem; font-weight: 600; }
-        .badge-off { background: #441; color: #fa3; }
-        .badge-on { background: #143; color: #3c6; }
-        #status-led { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
-        #channel-list { max-height: 180px; overflow-y: auto; }
-        #channel-list option { padding: 4px; }
-        .file-row { display: flex; gap: .5rem; align-items: center; }
-        .file-row input[type="file"] { flex: 1; }
-        .file-row .btn { flex-shrink: 0; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>VYXBOT v4.0</title>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
+body{background:#0b0e14;color:#e0e6ed;min-height:100vh;display:flex;justify-content:center;padding:1.5rem}
+.container{max-width:780px;width:100%}
+h1{font-size:1.4rem;border-bottom:1px solid #1e293b;padding-bottom:.75rem;margin-bottom:1.2rem}
+h1 span{color:#58a6ff}
+.card{background:#131a22;border:1px solid #1e293b;border-radius:10px;padding:1.2rem;margin-bottom:1rem}
+.card-title{font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:#8b949e;margin-bottom:.8rem}
+label{display:block;font-size:.8rem;color:#8b949e;margin-bottom:.3rem;margin-top:.7rem}
+label:first-of-type{margin-top:0}
+input,select,textarea{width:100%;padding:.6rem .8rem;background:#0b0e14;border:1px solid #1e293b;border-radius:6px;color:#e0e6ed;font-size:.9rem}
+textarea{resize:vertical;min-height:60px}
+.row{display:flex;gap:.6rem}
+.row>*{flex:1}
+.btn{padding:.6rem 1.2rem;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:.85rem}
+.btn-primary{background:#238636;color:#fff}.btn-primary:hover{background:#2ea043}
+.btn-danger{background:#a11;color:#fff}.btn-danger:hover{background:#c22}
+.btn-secondary{background:#1e293b;color:#c9d1d9}.btn-secondary:hover{background:#273d56}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.log-box{background:#070a0f;border:1px solid #1e293b;border-radius:6px;padding:.6rem;height:200px;overflow-y:auto;font-family:monospace;font-size:.75rem}
+.log-box p{padding:2px 0;border-bottom:1px solid #111920;color:#8b949e}
+.log-time{color:#58a6ff}
+.badge{display:inline-block;padding:2px 10px;border-radius:10px;font-size:.7rem;font-weight:600}
+.badge-off{background:#441;color:#fa3}
+.badge-on{background:#143;color:#3c6}
+#status-led{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+</style>
 </head>
 <body>
 <div class="container">
-    <h1><span>VYX</span>BOT v4.0</h1>
+<h1><span>VYX</span>BOT v4.0</h1>
 
-    <!-- Platform Selection -->
-    <div class="card">
-        <div class="card-title">Platform</div>
-        <div class="row">
-            <select id="platform">
-                <option value="">— Select Platform —</option>
-                <option value="discord">Discord</option>
-                <option value="telegram">Telegram</option>
-            </select>
-            <button class="btn btn-secondary" onclick="fetchChannels()">Load Channels</button>
-        </div>
-    </div>
+<div class="card">
+<div class="card-title">Platform</div>
+<div class="row">
+<select id="platform">
+<option value="">— Select —</option>
+<option value="discord">Discord</option>
+<option value="telegram">Telegram</option>
+</select>
+<button class="btn btn-secondary" onclick="fetchChannels()">Load Channels</button>
+</div>
+</div>
 
-    <!-- Auth -->
-    <div class="card" id="auth-card">
-        <div class="card-title">Authentication</div>
-        <div id="auth-discord" style="display:none;">
-            <label>Discord User Token</label>
-            <input type="password" id="discord-token" placeholder="mfa.xxx..." />
-        </div>
-        <div id="auth-telegram" style="display:none;">
-            <label>API ID</label>
-            <input type="text" id="tg-api-id" placeholder="12345" />
-            <label>API Hash</label>
-            <input type="text" id="tg-api-hash" placeholder="abc123..." />
-            <label>Session String</label>
-            <input type="password" id="tg-session" placeholder="AQE... (from pyrogram)" />
-        </div>
-        <button class="btn btn-primary" style="margin-top:1rem;" onclick="connect()">Connect</button>
-    </div>
+<div class="card" id="auth-card">
+<div class="card-title">Authentication</div>
+<div id="auth-discord" style="display:none;">
+<label>Discord User Token</label>
+<input type="password" id="discord-token" placeholder="mfa.xxx...">
+</div>
+<div id="auth-telegram" style="display:none;">
+<label>API ID</label>
+<input type="text" id="tg-api-id" placeholder="12345">
+<label>API Hash</label>
+<input type="text" id="tg-api-hash" placeholder="abc123...">
+<label>Session String</label>
+<input type="password" id="tg-session" placeholder="AQE...">
+</div>
+<button class="btn btn-primary" style="margin-top:1rem;" onclick="connect()">Connect</button>
+</div>
 
-    <!-- Spam Controls -->
-    <div class="card">
-        <div class="card-title">
-            Spam Target
-            <span id="status-led" style="background:#fa3;"></span>
-            <span class="badge badge-off" id="status-badge">OFF</span>
-        </div>
+<div class="card">
+<div class="card-title">
+Spam Target
+<span id="status-led" style="background:#fa3;"></span>
+<span class="badge badge-off" id="status-badge">OFF</span>
+</div>
+<label>Channel</label>
+<select id="channel-id"><option>— Load channels first —</option></select>
+<label>Message</label>
+<textarea id="message" placeholder="Message to spam..."></textarea>
+<label>Image (optional)</label>
+<input type="file" id="image-upload" accept="image/*">
+<div class="row" style="margin-top:.8rem;">
+<div>
+<label>Interval (seconds)</label>
+<input type="number" id="interval" value="5" min="1" step="0.5">
+</div>
+<div style="display:flex;align-items:flex-end;gap:.5rem;">
+<button class="btn btn-primary" onclick="startSpam()" id="btn-start">▶ Start</button>
+<button class="btn btn-danger" onclick="stopSpam()" id="btn-stop" disabled>■ Stop</button>
+</div>
+</div>
+</div>
 
-        <label>Channel</label>
-        <select id="channel-id"><option>— Load channels first —</option></select>
-
-        <label>Message</label>
-        <textarea id="message" placeholder="Message to spam..."></textarea>
-
-        <label>Image (optional)</label>
-        <div class="file-row">
-            <input type="file" id="image-upload" accept="image/*" />
-            <button class="btn btn-secondary" onclick="document.getElementById('image-upload').value=''">Clear</button>
-        </div>
-
-        <div class="row" style="margin-top:.8rem;">
-            <div>
-                <label>Interval (seconds)</label>
-                <input type="number" id="interval" value="5" min="1" step="0.5" />
-            </div>
-            <div style="display:flex;align-items:flex-end;gap:.5rem;">
-                <button class="btn btn-primary" onclick="startSpam()" id="btn-start">▶ Start</button>
-                <button class="btn btn-danger" onclick="stopSpam()" id="btn-stop" disabled>■ Stop</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Log -->
-    <div class="card">
-        <div class="card-title">Activity Log</div>
-        <div class="log-box" id="log-box"></div>
-    </div>
+<div class="card">
+<div class="card-title">Activity Log</div>
+<div class="log-box" id="log-box"></div>
+</div>
 </div>
 
 <script>
 const socket = io();
 let connected = false;
+let uploadedImagePath = null;
 
-// ─── Platform toggle ───
-document.getElementById('platform').addEventListener('change', function() {
+document.getElementById('platform').addEventListener('change', function(){
     document.getElementById('auth-discord').style.display = this.value === 'discord' ? 'block' : 'none';
     document.getElementById('auth-telegram').style.display = this.value === 'telegram' ? 'block' : 'none';
 });
 
-// ─── Socket logs ───
 socket.on('log', (data) => {
     const box = document.getElementById('log-box');
     const p = document.createElement('p');
@@ -134,113 +114,65 @@ socket.on('log', (data) => {
     box.scrollTop = box.scrollHeight;
 });
 
-// ─── Connect ───
 async function connect() {
     const platform = document.getElementById('platform').value;
-    if (!platform) return alert('Select a platform first.');
-
-    const payload = { platform };
-    if (platform === 'discord') {
-        payload.discord_token = document.getElementById('discord-token').value;
-    } else {
+    if(!platform) return alert('Select a platform first.');
+    const payload = {platform};
+    if(platform === 'discord') payload.discord_token = document.getElementById('discord-token').value;
+    else {
         payload.telegram_api_id = parseInt(document.getElementById('tg-api-id').value);
         payload.telegram_api_hash = document.getElementById('tg-api-hash').value;
         payload.telegram_session = document.getElementById('tg-session').value;
     }
-
-    const res = await fetch('/api/connect', {
-        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (data.status === 'ok') {
-        connected = true;
-        addLog('Connected');
-    }
+    const res = await fetch('/api/connect', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d = await res.json();
+    if(d.status === 'ok'){connected=true; addLog('Connected');}
 }
 
-// ─── Fetch channels ───
 async function fetchChannels() {
     const platform = document.getElementById('platform').value;
     const sel = document.getElementById('channel-id');
     sel.innerHTML = '<option>Loading...</option>';
-
     let payload, url;
-    if (platform === 'discord') {
-        url = '/api/channels/discord';
-        payload = { token: document.getElementById('discord-token').value };
-    } else if (platform === 'telegram') {
-        url = '/api/channels/telegram';
-        payload = {
-            api_id: parseInt(document.getElementById('tg-api-id').value),
-            api_hash: document.getElementById('tg-api-hash').value,
-            session: document.getElementById('tg-session').value,
-        };
-    } else {
-        return alert('Select a platform first.');
-    }
-
-    const res = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    if(platform === 'discord') {url='/api/channels/discord'; payload={token:document.getElementById('discord-token').value};}
+    else if(platform === 'telegram') {url='/api/channels/telegram'; payload={api_id:parseInt(document.getElementById('tg-api-id').value),api_hash:document.getElementById('tg-api-hash').value,session:document.getElementById('tg-session').value};}
+    else return alert('Select a platform first.');
+    const res = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     const data = await res.json();
     sel.innerHTML = '';
-
-    if (data.channels) {
-        data.channels.forEach(ch => {
-            const opt = document.createElement('option');
-            opt.value = ch.id;
-            opt.textContent = ch.title || ch.name;
-            sel.appendChild(opt);
-        });
-    } else if (data.error) {
-        sel.innerHTML = `<option>Error: ${data.error}</option>`;
-    }
+    if(data.channels) data.channels.forEach(ch => {const o=document.createElement('option');o.value=ch.id;o.textContent=ch.title||ch.name;sel.appendChild(o);});
+    else sel.innerHTML = `<option>Error: ${data.error}</option>`;
 }
 
-// ─── Upload image & get path ───
-let uploadedImagePath = null;
-document.getElementById('image-upload').addEventListener('change', async function(e) {
-    const file = e.target.files[0];
-    if (!file) { uploadedImagePath = null; return; }
-
-    const formData = new FormData();
-    formData.append('image', file);
-
-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
-    const data = await res.json();
-    uploadedImagePath = data.path || null;
-    if (data.path) addLog(`Image uploaded: ${file.name}`);
+document.getElementById('image-upload').addEventListener('change', async function(e){
+    const file = e.target.files[0]; if(!file){uploadedImagePath=null; return;}
+    const fd = new FormData(); fd.append('image', file);
+    const res = await fetch('/api/upload',{method:'POST',body:fd});
+    const d = await res.json(); uploadedImagePath = d.path || null;
+    if(d.path) addLog('Image uploaded');
 });
 
-// Add the upload route to backend later
-// For now, fallback: user just references local path manually
-// We'll handle image_path via a manual input override or keep it simple
-
-// ─── Start spam ───
 async function startSpam() {
-    if (!connected) return alert('Connect first.');
-
+    if(!connected) return alert('Connect first.');
     const payload = {
         channel_id: document.getElementById('channel-id').value,
         message: document.getElementById('message').value,
         interval: parseFloat(document.getElementById('interval').value),
         image_path: uploadedImagePath || '',
     };
-
-    const res = await fetch('/api/start', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-    const data = await res.json();
-    if (data.status === 'ok') {
+    const res = await fetch('/api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d = await res.json();
+    if(d.status === 'ok'){
         document.getElementById('btn-start').disabled = true;
         document.getElementById('btn-stop').disabled = false;
         document.getElementById('status-led').style.background = '#3c6';
         document.getElementById('status-badge').textContent = 'ON';
         document.getElementById('status-badge').className = 'badge badge-on';
-    } else {
-        alert(data.msg || 'Error starting.');
-    }
+    } else alert(d.msg || 'Error');
 }
 
-// ─── Stop spam ───
 async function stopSpam() {
-    await fetch('/api/stop', { method: 'POST' });
+    await fetch('/api/stop',{method:'POST'});
     document.getElementById('btn-start').disabled = false;
     document.getElementById('btn-stop').disabled = true;
     document.getElementById('status-led').style.background = '#fa3';
@@ -248,14 +180,11 @@ async function stopSpam() {
     document.getElementById('status-badge').className = 'badge badge-off';
 }
 
-function addLog(msg) {
-    const d = new Date();
-    const t = d.toTimeString().slice(0,8);
-    const box = document.getElementById('log-box');
-    const p = document.createElement('p');
-    p.innerHTML = `<span class="log-time">[${t}]</span> ${msg}`;
-    box.appendChild(p);
-    box.scrollTop = box.scrollHeight;
+function addLog(msg){
+    const d=new Date();const t=d.toTimeString().slice(0,8);
+    const box=document.getElementById('log-box');const p=document.createElement('p');
+    p.innerHTML=`<span class="log-time">[${t}]</span> ${msg}`;
+    box.appendChild(p);box.scrollTop=box.scrollHeight;
 }
 </script>
 </body>
