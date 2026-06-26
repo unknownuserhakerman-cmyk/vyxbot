@@ -1,4 +1,5 @@
 const socket = io();
+
 const loginPanel          = document.getElementById('loginPanel');
 const dashboard           = document.getElementById('dashboard');
 const platformEl          = document.getElementById('platform');
@@ -394,4 +395,4 @@ function escapeHtml(str) {
   var d = document.createElement('div');
   d.textContent = str;
   return d.innerHTML;
-                            }
+}
