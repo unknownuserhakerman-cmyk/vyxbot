@@ -1,191 +1,245 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>VYXBOT v4.0</title>
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-<style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,sans-serif}
-body{background:#0b0e14;color:#e0e6ed;min-height:100vh;display:flex;justify-content:center;padding:1.5rem}
-.container{max-width:780px;width:100%}
-h1{font-size:1.4rem;border-bottom:1px solid #1e293b;padding-bottom:.75rem;margin-bottom:1.2rem}
-h1 span{color:#58a6ff}
-.card{background:#131a22;border:1px solid #1e293b;border-radius:10px;padding:1.2rem;margin-bottom:1rem}
-.card-title{font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:#8b949e;margin-bottom:.8rem}
-label{display:block;font-size:.8rem;color:#8b949e;margin-bottom:.3rem;margin-top:.7rem}
-label:first-of-type{margin-top:0}
-input,select,textarea{width:100%;padding:.6rem .8rem;background:#0b0e14;border:1px solid #1e293b;border-radius:6px;color:#e0e6ed;font-size:.9rem}
-textarea{resize:vertical;min-height:60px}
-.row{display:flex;gap:.6rem}
-.row>*{flex:1}
-.btn{padding:.6rem 1.2rem;border:none;border-radius:6px;cursor:pointer;font-weight:600;font-size:.85rem}
-.btn-primary{background:#238636;color:#fff}.btn-primary:hover{background:#2ea043}
-.btn-danger{background:#a11;color:#fff}.btn-danger:hover{background:#c22}
-.btn-secondary{background:#1e293b;color:#c9d1d9}.btn-secondary:hover{background:#273d56}
-.btn:disabled{opacity:.4;cursor:not-allowed}
-.log-box{background:#070a0f;border:1px solid #1e293b;border-radius:6px;padding:.6rem;height:200px;overflow-y:auto;font-family:monospace;font-size:.75rem}
-.log-box p{padding:2px 0;border-bottom:1px solid #111920;color:#8b949e}
-.log-time{color:#58a6ff}
-.badge{display:inline-block;padding:2px 10px;border-radius:10px;font-size:.7rem;font-weight:600}
-.badge-off{background:#441;color:#fa3}
-.badge-on{background:#143;color:#3c6}
-#status-led{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VYXBOT v4.0</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 600px;
+            width: 100%;
+            margin: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+        h1 {
+            text-align: center;
+            color: #58a6ff;
+            font-size: 28px;
+            margin-bottom: 24px;
+            letter-spacing: 1px;
+        }
+        h1 span { color: #f0883e; }
+        .section { margin-bottom: 20px; }
+        .section-title {
+            font-size: 13px;
+            text-transform: uppercase;
+            color: #8b949e;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+        select, input, textarea, button {
+            width: 100%;
+            padding: 10px 14px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            color: #c9d1d9;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        select:focus, input:focus, textarea:focus { border-color: #58a6ff; }
+        button {
+            background: #21262d;
+            border: 1px solid #30363d;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        button:hover { background: #30363d; border-color: #8b949e; }
+        button.primary {
+            background: #238636;
+            border-color: #2ea043;
+            color: #fff;
+        }
+        button.primary:hover { background: #2ea043; }
+        button.danger {
+            background: #da3633;
+            border-color: #f85149;
+            color: #fff;
+        }
+        button.danger:hover { background: #f85149; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .flex-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .flex-row select { flex: 1; }
+        .flex-row button { width: auto; padding: 10px 20px; white-space: nowrap; }
+        .tg-fields, .dc-fields { display: none; }
+        .tg-fields.active, .dc-fields.active { display: block; }
+        .tg-fields input, .dc-fields input { margin-bottom: 8px; }
+        .tg-fields input:last-child, .dc-fields input:last-child { margin-bottom: 0; }
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 10px 14px;
+        }
+        .toggle-label { font-size: 14px; }
+        .toggle-switch {
+            width: 44px;
+            height: 24px;
+            background: #30363d;
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+            flex-shrink: 0;
+        }
+        .toggle-switch.active { background: #238636; }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+        .toggle-switch.active::after { transform: translateX(20px); }
+        .action-row {
+            display: flex;
+            gap: 10px;
+        }
+        .action-row button { flex: 1; }
+        .log-box {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            height: 200px;
+            overflow-y: auto;
+            padding: 12px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .log-box .log-entry { color: #8b949e; }
+        .log-box .log-entry .time { color: #58a6ff; }
+        .log-box .log-entry.error { color: #f85149; }
+        .hidden { display: none; }
+        .channel-select { margin-bottom: 8px; }
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        .status-indicator.online { background: #3fb950; box-shadow: 0 0 6px #3fb950; }
+        .status-indicator.offline { background: #f85149; }
+        .loading-dots::after {
+            content: '';
+            animation: dots 1.5s steps(3, end) infinite;
+        }
+        @keyframes dots {
+            0%   { content: ''; }
+            33%  { content: '.'; }
+            66%  { content: '..'; }
+            100% { content: '...'; }
+        }
+    </style>
 </head>
 <body>
-<div class="container">
-<h1><span>VYX</span>BOT v4.0</h1>
+    <div class="container">
+        <h1>VYX <span>BOT</span> v4.0</h1>
 
-<div class="card">
-<div class="card-title">Platform</div>
-<div class="row">
-<select id="platform">
-<option value="">— Select —</option>
-<option value="discord">Discord</option>
-<option value="telegram">Telegram</option>
-</select>
-<button class="btn btn-secondary" onclick="fetchChannels()">Load Channels</button>
-</div>
-</div>
+        <!-- Platform -->
+        <div class="section">
+            <div class="section-title">Platform</div>
+            <select id="platform">
+                <option value="">-- Select Platform --</option>
+                <option value="telegram">Telegram</option>
+                <option value="discord">Discord</option>
+            </select>
+        </div>
 
-<div class="card" id="auth-card">
-<div class="card-title">Authentication</div>
-<div id="auth-discord" style="display:none;">
-<label>Discord User Token</label>
-<input type="password" id="discord-token" placeholder="mfa.xxx...">
-</div>
-<div id="auth-telegram" style="display:none;">
-<label>API ID</label>
-<input type="text" id="tg-api-id" placeholder="12345">
-<label>API Hash</label>
-<input type="text" id="tg-api-hash" placeholder="abc123...">
-<label>Session String</label>
-<input type="password" id="tg-session" placeholder="AQE...">
-</div>
-<button class="btn btn-primary" style="margin-top:1rem;" onclick="connect()">Connect</button>
-</div>
+        <!-- Channels -->
+        <div class="section">
+            <div class="section-title">Channels</div>
+            <div class="flex-row">
+                <select id="channelSelect" class="channel-select" disabled>
+                    <option value="">-- Load channels first --</option>
+                </select>
+                <button id="loadChannelsBtn" disabled>Load Channels</button>
+            </div>
+        </div>
 
-<div class="card">
-<div class="card-title">
-Spam Target
-<span id="status-led" style="background:#fa3;"></span>
-<span class="badge badge-off" id="status-badge">OFF</span>
-</div>
-<label>Channel</label>
-<select id="channel-id"><option>— Load channels first —</option></select>
-<label>Message</label>
-<textarea id="message" placeholder="Message to spam..."></textarea>
-<label>Image (optional)</label>
-<input type="file" id="image-upload" accept="image/*">
-<div class="row" style="margin-top:.8rem;">
-<div>
-<label>Interval (seconds)</label>
-<input type="number" id="interval" value="5" min="1" step="0.5">
-</div>
-<div style="display:flex;align-items:flex-end;gap:.5rem;">
-<button class="btn btn-primary" onclick="startSpam()" id="btn-start">▶ Start</button>
-<button class="btn btn-danger" onclick="stopSpam()" id="btn-stop" disabled>■ Stop</button>
-</div>
-</div>
-</div>
+        <!-- Auth -->
+        <div class="section" id="authSection">
+            <div class="section-title">Authentication</div>
 
-<div class="card">
-<div class="card-title">Activity Log</div>
-<div class="log-box" id="log-box"></div>
-</div>
-</div>
+            <div class="dc-fields" id="dcFields">
+                <input type="password" id="discordToken" placeholder="Discord User Token">
+            </div>
 
-<script>
-const socket = io();
-let connected = false;
-let uploadedImagePath = null;
+            <div class="tg-fields" id="tgFields">
+                <input type="number" id="apiId" placeholder="API ID">
+                <input type="text" id="apiHash" placeholder="API Hash">
+                <input type="password" id="sessionString" placeholder="Session String">
+            </div>
 
-document.getElementById('platform').addEventListener('change', function(){
-    document.getElementById('auth-discord').style.display = this.value === 'discord' ? 'block' : 'none';
-    document.getElementById('auth-telegram').style.display = this.value === 'telegram' ? 'block' : 'none';
-});
+            <button id="connectBtn" class="primary" disabled>
+                <span class="status-indicator offline" id="statusDot"></span>
+                <span id="statusText">Connect</span>
+            </button>
+        </div>
 
-socket.on('log', (data) => {
-    const box = document.getElementById('log-box');
-    const p = document.createElement('p');
-    p.innerHTML = `<span class="log-time">[${data.time}]</span> ${data.msg}`;
-    box.appendChild(p);
-    box.scrollTop = box.scrollHeight;
-});
+        <!-- Spam config -->
+        <div class="section">
+            <div class="section-title">Spam Configuration</div>
+            <div class="toggle-row">
+                <span class="toggle-label">Spam Target</span>
+                <span style="display:flex;align-items:center;gap:10px;">
+                    <span id="spamState" style="font-size:13px;color:#8b949e;">OFF</span>
+                    <div class="toggle-switch" id="spamToggle"></div>
+                </span>
+            </div>
+        </div>
 
-async function connect() {
-    const platform = document.getElementById('platform').value;
-    if(!platform) return alert('Select a platform first.');
-    const payload = {platform};
-    if(platform === 'discord') payload.discord_token = document.getElementById('discord-token').value;
-    else {
-        payload.telegram_api_id = parseInt(document.getElementById('tg-api-id').value);
-        payload.telegram_api_hash = document.getElementById('tg-api-hash').value;
-        payload.telegram_session = document.getElementById('tg-session').value;
-    }
-    const res = await fetch('/api/connect', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    const d = await res.json();
-    if(d.status === 'ok'){connected=true; addLog('Connected');}
-}
+        <div class="section hidden" id="spamConfig">
+            <textarea id="messageInput" rows="3" placeholder="Channel Message (optional)"></textarea>
+            <div class="flex-row" style="margin-top:8px;">
+                <input type="file" id="imageInput" accept="image/*" style="flex:1;">
+                <input type="number" id="intervalInput" placeholder="Interval (s)" value="5" min="1" style="width:100px;">
+            </div>
+            <div class="action-row" style="margin-top:10px;">
+                <button id="startBtn" class="primary" disabled>▶ Start</button>
+                <button id="stopBtn" class="danger" disabled>■ Stop</button>
+            </div>
+        </div>
 
-async function fetchChannels() {
-    const platform = document.getElementById('platform').value;
-    const sel = document.getElementById('channel-id');
-    sel.innerHTML = '<option>Loading...</option>';
-    let payload, url;
-    if(platform === 'discord') {url='/api/channels/discord'; payload={token:document.getElementById('discord-token').value};}
-    else if(platform === 'telegram') {url='/api/channels/telegram'; payload={api_id:parseInt(document.getElementById('tg-api-id').value),api_hash:document.getElementById('tg-api-hash').value,session:document.getElementById('tg-session').value};}
-    else return alert('Select a platform first.');
-    const res = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    const data = await res.json();
-    sel.innerHTML = '';
-    if(data.channels) data.channels.forEach(ch => {const o=document.createElement('option');o.value=ch.id;o.textContent=ch.title||ch.name;sel.appendChild(o);});
-    else sel.innerHTML = `<option>Error: ${data.error}</option>`;
-}
+        <!-- Activity Log -->
+        <div class="section">
+            <div class="section-title">Activity Log</div>
+            <div class="log-box" id="logBox">
+                <div class="log-entry">── Ready ──</div>
+            </div>
+        </div>
+    </div>
 
-document.getElementById('image-upload').addEventListener('change', async function(e){
-    const file = e.target.files[0]; if(!file){uploadedImagePath=null; return;}
-    const fd = new FormData(); fd.append('image', file);
-    const res = await fetch('/api/upload',{method:'POST',body:fd});
-    const d = await res.json(); uploadedImagePath = d.path || null;
-    if(d.path) addLog('Image uploaded');
-});
-
-async function startSpam() {
-    if(!connected) return alert('Connect first.');
-    const payload = {
-        channel_id: document.getElementById('channel-id').value,
-        message: document.getElementById('message').value,
-        interval: parseFloat(document.getElementById('interval').value),
-        image_path: uploadedImagePath || '',
-    };
-    const res = await fetch('/api/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    const d = await res.json();
-    if(d.status === 'ok'){
-        document.getElementById('btn-start').disabled = true;
-        document.getElementById('btn-stop').disabled = false;
-        document.getElementById('status-led').style.background = '#3c6';
-        document.getElementById('status-badge').textContent = 'ON';
-        document.getElementById('status-badge').className = 'badge badge-on';
-    } else alert(d.msg || 'Error');
-}
-
-async function stopSpam() {
-    await fetch('/api/stop',{method:'POST'});
-    document.getElementById('btn-start').disabled = false;
-    document.getElementById('btn-stop').disabled = true;
-    document.getElementById('status-led').style.background = '#fa3';
-    document.getElementById('status-badge').textContent = 'OFF';
-    document.getElementById('status-badge').className = 'badge badge-off';
-}
-
-function addLog(msg){
-    const d=new Date();const t=d.toTimeString().slice(0,8);
-    const box=document.getElementById('log-box');const p=document.createElement('p');
-    p.innerHTML=`<span class="log-time">[${t}]</span> ${msg}`;
-    box.appendChild(p);box.scrollTop=box.scrollHeight;
-}
-</script>
+    <script src="/app.js"></script>
 </body>
 </html>
