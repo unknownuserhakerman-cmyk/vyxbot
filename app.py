@@ -1,10 +1,11 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_socketio import SocketIO
 import threading
 import asyncio
 import random
 import string
 import os
+import json
 import time
 from datetime import datetime
 
@@ -12,25 +13,51 @@ app = Flask(__name__, static_folder="static", static_url_path="")
 app.config["SECRET_KEY"] = os.urandom(16).hex()
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-state = {
-    "platform": None,
-    "discord_token": None,
-    "telegram_session": None,
-    "telegram_api_id": None,
-    "telegram_api_hash": None,
-    "running": False,
-    "thread": None,
+STATE_FILE = "state.json"
+UPLOAD_FOLDER = "uploads"
+PHOTO_FOLDER = "profiles"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(PHOTO_FOLDER, exist_ok=True)
+
+
+# ─── Persistent State (survives server restarts) ───
+
+def load_state():
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE) as f:
+                return json.load(f)
+        except:
+            pass
+    return {
+        "platform": None,
+        "discord_token": None,
+        "telegram_session": None,
+        "telegram_api_id": None,
+        "telegram_api_hash": None,
+        "telegram_username": None,
+        "telegram_first_name": None,
+        "telegram_photo": None,
+        "auto_reply": False,
+        "auto_reply_message": "",
+        "running": False,
+    }
+
+def save_state(s):
+    with open(STATE_FILE, "w") as f:
+        json.dump(s, f, indent=2)
+
+state = load_state()
+
+# Runtime-only state (not persisted)
+runtime = {
+    "spam_thread": None,
+    "auto_reply_thread": None,
     "channel_id": None,
     "message": "",
     "interval": 5,
     "image_path": None,
-    "auto_reply": False,
-    "auto_reply_message": "",
-    "auto_reply_thread": None,
 }
-
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 # ─── Utility ───
@@ -41,7 +68,6 @@ def random_delay(base_interval):
         jitter += random.uniform(2, 8)
     return jitter
 
-
 def vary_message(msg):
     variants = [
         msg,
@@ -49,7 +75,6 @@ def vary_message(msg):
         msg.strip() + " " + random.choice(string.ascii_lowercase),
     ]
     return random.choice(variants)
-
 
 def log(msg):
     t = datetime.now().strftime("%H:%M:%S")
@@ -66,22 +91,23 @@ def discord_spam_loop():
     class Bot(discord.Client):
         async def on_ready(self):
             log(f"Discord connected as {self.user}")
-            ch = self.get_channel(int(state["channel_id"]))
+            ch = self.get_channel(int(runtime["channel_id"]))
             if not ch:
                 log("ERROR: Channel not found")
                 state["running"] = False
+                save_state(state)
                 await self.close()
                 return
-            while state["running"]:
+            while state.get("running", False):
                 try:
-                    c = vary_message(state["message"])
-                    if state["image_path"] and os.path.exists(state["image_path"]):
-                        with open(state["image_path"], "rb") as f:
+                    c = vary_message(runtime["message"])
+                    if runtime["image_path"] and os.path.exists(runtime["image_path"]):
+                        with open(runtime["image_path"], "rb") as f:
                             await ch.send(content=c, file=discord.File(f))
                     else:
                         await ch.send(content=c)
                     log(f"Sent to #{ch.name}")
-                    await da.sleep(random_delay(state["interval"]))
+                    await da.sleep(random_delay(runtime["interval"]))
                 except Exception as e:
                     log(f"Discord error: {e}")
                     await da.sleep(5)
@@ -104,22 +130,22 @@ def telegram_spam_loop():
         async with app:
             me = await app.get_me()
             log(f"Telegram connected as {me.first_name}")
-            while state["running"]:
+            while state.get("running", False):
                 try:
-                    c = vary_message(state["message"])
-                    if state["image_path"] and os.path.exists(state["image_path"]):
+                    c = vary_message(runtime["message"])
+                    if runtime["image_path"] and os.path.exists(runtime["image_path"]):
                         await app.send_photo(
-                            chat_id=int(state["channel_id"]),
-                            photo=state["image_path"],
+                            chat_id=int(runtime["channel_id"]),
+                            photo=runtime["image_path"],
                             caption=c,
                         )
                     else:
                         await app.send_message(
-                            chat_id=int(state["channel_id"]),
+                            chat_id=int(runtime["channel_id"]),
                             text=c,
                         )
-                    log(f"Sent to Telegram {state['channel_id']}")
-                    await asyncio.sleep(random_delay(state["interval"]))
+                    log(f"Sent to Telegram {runtime['channel_id']}")
+                    await asyncio.sleep(random_delay(runtime["interval"]))
                 except Exception as e:
                     log(f"Telegram error: {e}")
                     await asyncio.sleep(5)
@@ -171,7 +197,6 @@ def index():
     return send_from_directory("static", "index.html")
 
 
-# ─── Connect: INSTANT — saves credentials, doesn't test ───
 @app.route("/api/connect", methods=["POST"])
 def api_connect():
     d = request.json
@@ -188,9 +213,9 @@ def api_connect():
         state["telegram_api_id"] = api_id_val
         state["telegram_api_hash"] = api_hash_val
         state["telegram_session"] = session_val
-        log(f"Credentials saved — Telegram (testing in background...)")
+        save_state(state)
 
-        # Test connection in background thread
+        log("Credentials saved — verifying in background...")
         t = threading.Thread(target=_verify_telegram, daemon=True)
         t.start()
 
@@ -203,8 +228,9 @@ def api_connect():
 
         state["platform"] = "discord"
         state["discord_token"] = token
-        log(f"Credentials saved — Discord (testing in background...)")
+        save_state(state)
 
+        log("Credentials saved — verifying in background...")
         t = threading.Thread(target=_verify_discord, daemon=True)
         t.start()
 
@@ -214,7 +240,6 @@ def api_connect():
 
 
 def _verify_telegram():
-    """Background test — logs result via WebSocket."""
     from pyrogram import Client
     try:
         async def test():
@@ -226,16 +251,36 @@ def _verify_telegram():
             )
             async with app:
                 me = await app.get_me()
+                state["telegram_username"] = me.username
+                state["telegram_first_name"] = me.first_name
+                try:
+                    photos = [p async for p in app.get_chat_photos("me")]
+                    if photos:
+                        photo_path = os.path.join(PHOTO_FOLDER, "profile.jpg")
+                        await app.download_media(photos[0].file_id, file_name=photo_path)
+                        state["telegram_photo"] = "/api/profile/photo"
+                except:
+                    pass
+                save_state(state)
+                # Push profile update to the browser via WebSocket
+                socketio.emit("profile_update", {
+                    "username": me.username or "",
+                    "first_name": me.first_name or "",
+                    "has_photo": os.path.exists(os.path.join(PHOTO_FOLDER, "profile.jpg")),
+                })
                 return me.first_name or me.username or str(me.id)
 
         name = asyncio.run(test())
         log(f"✓ Telegram verified — logged in as {name}")
     except Exception as e:
         log(f"✗ Telegram verification failed: {e}")
+        state["platform"] = None
+        state["telegram_username"] = None
+        state["telegram_first_name"] = None
+        save_state(state)
 
 
 def _verify_discord():
-    """Background test — logs result via WebSocket."""
     import discord
     import asyncio as da
     try:
@@ -246,12 +291,45 @@ def _verify_discord():
                 await self.close()
         Tester().run(state["discord_token"], bot=False)
         if result:
+            state["telegram_username"] = result[0]
+            state["telegram_first_name"] = result[0]
+            save_state(state)
+            socketio.emit("profile_update", {
+                "username": result[0],
+                "first_name": result[0],
+                "has_photo": False,
+            })
             log(f"✓ Discord verified — logged in as {result[0]}")
     except Exception as e:
         log(f"✗ Discord verification failed: {e}")
+        state["platform"] = None
+        save_state(state)
 
 
-# ─── Disconnect / Logout ───
+@app.route("/api/profile/photo")
+def profile_photo():
+    photo_path = os.path.join(PHOTO_FOLDER, "profile.jpg")
+    if os.path.exists(photo_path):
+        return send_file(photo_path, mimetype="image/jpeg")
+    return "", 204
+
+
+@app.route("/api/session", methods=["GET"])
+def api_session():
+    if state.get("platform") and (
+        (state["platform"] == "telegram" and state.get("telegram_session"))
+        or (state["platform"] == "discord" and state.get("discord_token"))
+    ):
+        return jsonify({
+            "connected": True,
+            "platform": state["platform"],
+            "username": state.get("telegram_username") or "",
+            "first_name": state.get("telegram_first_name") or "",
+            "has_photo": os.path.exists(os.path.join(PHOTO_FOLDER, "profile.jpg")),
+        })
+    return jsonify({"connected": False})
+
+
 @app.route("/api/disconnect", methods=["POST"])
 def api_disconnect():
     state["running"] = False
@@ -261,41 +339,41 @@ def api_disconnect():
     state["telegram_session"] = None
     state["telegram_api_id"] = None
     state["telegram_api_hash"] = None
-    state["channel_id"] = None
-    state["message"] = ""
-    state["interval"] = 5
-    state["image_path"] = None
+    state["telegram_username"] = None
+    state["telegram_first_name"] = None
+    state["telegram_photo"] = None
+    runtime["channel_id"] = None
+    runtime["message"] = ""
+    runtime["interval"] = 5
+    runtime["image_path"] = None
+    photo_path = os.path.join(PHOTO_FOLDER, "profile.jpg")
+    if os.path.exists(photo_path):
+        os.remove(photo_path)
+    save_state(state)
     log("Disconnected — all credentials cleared")
     return jsonify({"status": "ok"})
 
 
-# ─── Session check ───
-@app.route("/api/session", methods=["GET"])
-def api_session():
-    if state["platform"]:
-        return jsonify({"connected": True, "platform": state["platform"]})
-    return jsonify({"connected": False})
-
-
-# ─── Start / Stop spam ───
 @app.route("/api/start", methods=["POST"])
 def api_start():
     d = request.json
-    state["channel_id"] = d.get("channel_id")
-    state["message"] = d.get("message")
-    state["interval"] = float(d.get("interval", 5))
-    state["image_path"] = d.get("image_path") or None
-    if state["running"]:
+    runtime["channel_id"] = d.get("channel_id")
+    runtime["message"] = d.get("message")
+    runtime["interval"] = float(d.get("interval", 5))
+    runtime["image_path"] = d.get("image_path") or None
+    if state.get("running", False):
         return jsonify({"status": "error", "msg": "Already running"}), 400
     state["running"] = True
+    save_state(state)
     if state["platform"] == "discord":
-        state["thread"] = threading.Thread(target=discord_spam_loop, daemon=True)
+        runtime["spam_thread"] = threading.Thread(target=discord_spam_loop, daemon=True)
     elif state["platform"] == "telegram":
-        state["thread"] = threading.Thread(target=telegram_spam_loop, daemon=True)
+        runtime["spam_thread"] = threading.Thread(target=telegram_spam_loop, daemon=True)
     else:
         state["running"] = False
+        save_state(state)
         return jsonify({"status": "error", "msg": "No platform"}), 400
-    state["thread"].start()
+    runtime["spam_thread"].start()
     log(f"▶ Started {state['platform']} spam")
     return jsonify({"status": "ok"})
 
@@ -303,6 +381,7 @@ def api_start():
 @app.route("/api/stop", methods=["POST"])
 def api_stop():
     state["running"] = False
+    save_state(state)
     log("■ Stopped")
     return jsonify({"status": "ok"})
 
@@ -310,13 +389,14 @@ def api_stop():
 @app.route("/api/status", methods=["GET"])
 def api_status():
     return jsonify({
-        "running": state["running"],
-        "platform": state["platform"],
+        "running": state.get("running", False),
+        "platform": state.get("platform"),
         "auto_reply": state.get("auto_reply", False),
     })
 
 
 # ─── Auto-reply ───
+
 @app.route("/api/auto-reply/start", methods=["POST"])
 def api_auto_reply_start():
     d = request.json
@@ -328,10 +408,11 @@ def api_auto_reply_start():
 
     state["auto_reply_message"] = message
     state["auto_reply"] = True
+    save_state(state)
 
-    if not state.get("auto_reply_thread") or not state["auto_reply_thread"].is_alive():
+    if not runtime.get("auto_reply_thread") or not runtime["auto_reply_thread"].is_alive():
         t = threading.Thread(target=auto_reply_loop, daemon=True)
-        state["auto_reply_thread"] = t
+        runtime["auto_reply_thread"] = t
         t.start()
         log(f"Auto-reply enabled: \"{message[:50]}...\"")
     else:
@@ -343,11 +424,13 @@ def api_auto_reply_start():
 @app.route("/api/auto-reply/stop", methods=["POST"])
 def api_auto_reply_stop():
     state["auto_reply"] = False
+    save_state(state)
     log("Auto-reply disabled")
     return jsonify({"status": "ok"})
 
 
 # ─── Upload ───
+
 @app.route("/api/upload", methods=["POST"])
 def api_upload():
     if "image" not in request.files:
@@ -356,7 +439,7 @@ def api_upload():
     ext = f.filename.rsplit(".", 1)[-1] if "." in f.filename else "png"
     path = os.path.join(UPLOAD_FOLDER, f"spam_{int(time.time())}.{ext}")
     f.save(path)
-    log(f"Image uploaded")
+    log("Image uploaded")
     return jsonify({"path": os.path.abspath(path)})
 
 
@@ -366,6 +449,7 @@ def uploaded(filename):
 
 
 # ─── Channel Loading ───
+
 @app.route("/api/channels/telegram", methods=["POST"])
 def api_tg_channels():
     from pyrogram import Client
@@ -412,7 +496,6 @@ def api_dc_channels():
     class Lister(discord.Client):
         async def on_ready(self):
             try:
-                nonlocal r
                 for g in self.guilds:
                     for ch in g.text_channels:
                         r.append({"id": str(ch.id), "name": f"{g.name} / #{ch.name}"})
