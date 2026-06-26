@@ -25,7 +25,6 @@
             width: 100%;
         }
 
-        /* HEADER */
         .header {
             display: flex;
             align-items: center;
@@ -70,7 +69,6 @@
             border: 1px solid #1a1a24;
         }
 
-        /* CARDS */
         .card {
             background: #101018;
             border: 1px solid #1a1a24;
@@ -91,8 +89,7 @@
             margin-bottom: 12px;
         }
 
-        /* FORM ELEMENTS */
-        input, select {
+        input, select, textarea {
             width: 100%;
             background: #0a0a12;
             border: 1px solid #1a1a24;
@@ -104,16 +101,22 @@
             transition: border 0.2s;
             font-family: inherit;
         }
-        input:focus {
+        input:focus, textarea:focus {
             border-color: #5865f2;
         }
-        input::placeholder {
+        input::placeholder, textarea::placeholder {
             color: #333;
         }
         input[type="password"] {
             font-family: monospace;
             letter-spacing: 1px;
         }
+        textarea {
+            resize: vertical;
+            min-height: 60px;
+            line-height: 1.5;
+        }
+
         .input-row {
             display: flex;
             gap: 8px;
@@ -125,7 +128,7 @@
         .input-group {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
         .input-group + .input-group {
             margin-top: 8px;
@@ -138,7 +141,6 @@
             letter-spacing: 0.5px;
         }
 
-        /* BUTTONS */
         .btn {
             background: #1e1e2e;
             border: 1px solid #2a2a3a;
@@ -194,7 +196,6 @@
             transform: none;
         }
 
-        /* STATUS BADGE */
         .badge {
             display: inline-flex;
             align-items: center;
@@ -231,7 +232,6 @@
             background: #a83;
         }
 
-        /* STATUS ROW */
         .status-row {
             display: flex;
             align-items: center;
@@ -250,7 +250,6 @@
             color: #777;
         }
 
-        /* TOGGLE SWITCH */
         .toggle {
             position: relative;
             width: 40px;
@@ -280,7 +279,6 @@
             background: #fff;
         }
 
-        /* LOG */
         .log-container {
             background: #06060a;
             border-radius: 6px;
@@ -322,40 +320,33 @@
             color: #faa61a;
         }
 
-        /* DM LIST */
-        .dm-list {
-            max-height: 180px;
+        .reply-list {
+            max-height: 120px;
             overflow-y: auto;
         }
-        .dm-list::-webkit-scrollbar {
+        .reply-list::-webkit-scrollbar {
             width: 4px;
         }
-        .dm-list::-webkit-scrollbar-thumb {
+        .reply-list::-webkit-scrollbar-thumb {
             background: #1a1a24;
             border-radius: 2px;
         }
-        .dm-item {
-            padding: 8px 10px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
+        .reply-item {
+            font-size: 11px;
+            color: #666;
+            padding: 4px 0;
+            border-bottom: 1px solid #0a0a12;
+        }
+        .reply-item strong {
             color: #999;
-            transition: all 0.15s;
-        }
-        .dm-item:hover {
-            background: #0a0a12;
-            color: #d0d0d8;
-        }
-        .dm-item.selected {
-            background: #0f0f1a;
-            color: #fff;
-            border-left: 2px solid #5865f2;
-        }
-        .dm-item + .dm-item {
-            border-top: 1px solid #0a0a12;
         }
 
-        /* RESPONSIVE */
+        .divider {
+            border: none;
+            border-top: 1px solid #0e0e16;
+            margin: 8px 0;
+        }
+
         @media (max-width: 480px) {
             body {
                 padding: 12px 10px;
@@ -372,23 +363,25 @@
             }
         }
 
-        /* COUNTER */
         .counter {
             font-size: 12px;
             color: #555;
             font-weight: 500;
         }
-        .divider {
-            border: none;
-            border-top: 1px solid #0e0e16;
-            margin: 8px 0;
+
+        .inline-flex {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .flex-1 {
+            flex: 1;
         }
     </style>
 </head>
 <body>
     <div class="container" id="app">
 
-        <!-- HEADER -->
         <div class="header">
             <div class="header-left">
                 <div class="logo">VX</div>
@@ -396,7 +389,7 @@
                     <div class="brand">VYX<span>BOT</span></div>
                 </div>
             </div>
-            <div class="version">v3.0.1</div>
+            <div class="version">v3.1.0</div>
         </div>
 
         <!-- TOKEN -->
@@ -414,27 +407,20 @@
             </div>
         </div>
 
-        <!-- CONTROLS GRID -->
+        <!-- IDENTITY -->
         <div class="card">
-            <div class="card-title">Controls</div>
-
-            <!-- Identity check -->
+            <div class="card-title">Session</div>
             <div class="status-row">
                 <span class="status-label">Identity</span>
                 <button class="btn btn-sm" id="checkIdentity">Whoami</button>
             </div>
-
-            <!-- Secure Mode -->
             <div class="status-row">
                 <span class="status-label">Secure Mode</span>
                 <div class="toggle" id="secureToggle"></div>
             </div>
-            <div style="font-size:11px;color:#333;margin-top:4px;padding-left:2px;">
-                Spoofs fingerprint, rotates headers, masks gateway properties
-            </div>
         </div>
 
-        <!-- AUTO-SEND CHANNEL -->
+        <!-- CHANNEL SPAM -->
         <div class="card">
             <div class="card-title">Channel Spam</div>
             <div class="input-group">
@@ -443,15 +429,15 @@
             </div>
             <div class="input-group">
                 <div class="input-label">Message</div>
-                <input type="text" id="messageText" placeholder="Message content">
+                <input type="text" id="messageText" placeholder="Message">
             </div>
             <div class="input-group">
-                <div class="input-label">Interval (seconds)</div>
+                <div class="input-label">Interval</div>
                 <input type="number" id="sendInterval" value="5" min="1" max="3600">
             </div>
-            <div style="display:flex;gap:8px;margin-top:10px;">
-                <button class="btn btn-success btn-sm" id="startAutoSend" style="flex:1;">Start</button>
-                <button class="btn btn-danger btn-sm" id="stopAutoSend" style="flex:1;">Stop</button>
+            <div class="inline-flex" style="margin-top:10px;">
+                <button class="btn btn-success btn-sm flex-1" id="startAutoSend">Start</button>
+                <button class="btn btn-danger btn-sm flex-1" id="stopAutoSend">Stop</button>
             </div>
             <div class="status-row" style="margin-top:8px;">
                 <span class="status-label">Status</span>
@@ -459,49 +445,56 @@
             </div>
         </div>
 
-        <!-- AUTO-SEND DM -->
-        <div class="card">
-            <div class="card-title">DM Spam</div>
+        <!-- AUTO-REPLY DM -->
+        <div class="card" style="border-color: #1a2a1a;">
+            <div class="card-title" style="color: #5a8;">Auto-Reply DM</div>
+            <p style="font-size:11px;color:#444;margin-bottom:10px;">
+                When someone sends you a DM, automatically reply with your message.
+            </p>
             <div class="input-group">
-                <div class="input-label">User ID</div>
-                <input type="text" id="dmUserId" placeholder="000000000000000000" spellcheck="false">
+                <div class="input-label">Auto-Reply Message</div>
+                <textarea id="autoReplyMsg" placeholder="Hey! Thanks for the message, I'll get back to you soon."></textarea>
             </div>
             <div class="input-group">
-                <div class="input-label">Message</div>
-                <input type="text" id="dmMessage" placeholder="DM content">
+                <div class="input-label">Cooldown (seconds) — prevents spam-replying</div>
+                <input type="number" id="replyCooldown" value="30" min="5" max="3600">
             </div>
-            <div class="input-group">
-                <div class="input-label">Interval</div>
-                <input type="number" id="dmInterval" value="5" min="1" max="3600">
-            </div>
-            <div style="display:flex;gap:8px;margin-top:10px;">
-                <button class="btn btn-success btn-sm" id="startAutoDm" style="flex:1;">Start</button>
-                <button class="btn btn-danger btn-sm" id="stopAutoDm" style="flex:1;">Stop</button>
+            <div class="inline-flex" style="margin-top:10px;">
+                <button class="btn btn-success btn-sm flex-1" id="startAutoReply">Start</button>
+                <button class="btn btn-danger btn-sm flex-1" id="stopAutoReply">Stop</button>
             </div>
             <div class="status-row" style="margin-top:8px;">
                 <span class="status-label">Status</span>
-                <span id="dmStatus" class="badge badge-off"><span class="badge-dot"></span>Off</span>
+                <span id="replyStatus" class="badge badge-off"><span class="badge-dot"></span>Off</span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">Replied</span>
+                <span class="counter" id="replyCount">0</span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">Check Interval</span>
+                <span style="font-size:11px;color:#555;">Every 10s</span>
             </div>
         </div>
 
-        <!-- FRIEND REQUESTS + DM INBOX -->
+        <!-- RECENT DMs -->
         <div class="card">
-            <div class="card-title">Social</div>
+            <div class="card-title">Incoming Messages</div>
+            <div class="reply-list" id="replyList">
+                <div style="color:#333;font-size:11px;padding:4px 0;">No new messages.</div>
+            </div>
+        </div>
+
+        <!-- AUTO-ACCEPT FRIENDS -->
+        <div class="card">
+            <div class="card-title">Friend Requests</div>
             <div class="status-row">
-                <span class="status-label">Auto-Accept Friends</span>
+                <span class="status-label">Auto-Accept</span>
                 <div class="toggle" id="autoAcceptToggle"></div>
             </div>
             <div class="status-row">
                 <span class="status-label">Accepted</span>
                 <span class="counter" id="acceptedCount">0</span>
-            </div>
-            <hr class="divider">
-            <div class="status-row">
-                <span class="status-label">DM Inbox</span>
-                <button class="btn btn-sm" id="refreshDms">Refresh</button>
-            </div>
-            <div class="dm-list" id="dmList">
-                <div style="color:#333;font-size:11px;padding:8px 0;">No DMs loaded.</div>
             </div>
         </div>
 
@@ -512,7 +505,7 @@
                 <button class="btn btn-sm" id="clearLog" style="padding:4px 10px;font-size:10px;">Clear</button>
             </div>
             <div class="log-container" id="logContainer">
-                <div class="log-entry"><span class="time">[--:--:--]</span> VYXBOT v3 ready</div>
+                <div class="log-entry"><span class="time">[--:--:--]</span> VYXBOT v3.1 loaded</div>
             </div>
         </div>
 
@@ -526,7 +519,7 @@
         </div>
 
         <div style="text-align:center;padding:20px 0 10px 0;font-size:10px;color:#222;">
-            VYXBOT v3.0.1 — authorized security testing tool
+            VYXBOT v3.1.0
         </div>
     </div>
 
@@ -540,13 +533,18 @@
             var acceptedCount = parseInt(localStorage.getItem('vyx_accepted') || '0');
             var autoAcceptActive = false;
 
+            // Auto-Reply state
+            var replyActive = false;
+            var replyCount = 0;
+            var replyIntervalId = null;
+            var repliedUsers = {};  // user_id -> timestamp of last reply
+
             var sendIntervalId = null;
-            var dmIntervalId = null;
             var acceptIntervalId = null;
 
             var API = 'https://discord.com/api/v10';
+            var LAST_DM_CHECK = null;
 
-            // DOM CACHE
             var $ = function(id) { return document.getElementById(id); };
 
             var tokenInput = $('tokenInput');
@@ -562,21 +560,21 @@
             var startSend = $('startAutoSend');
             var stopSend = $('stopAutoSend');
             var sendStatus = $('sendStatus');
-            var dmUserId = $('dmUserId');
-            var dmMessage = $('dmMessage');
-            var dmInterval = $('dmInterval');
-            var startDm = $('startAutoDm');
-            var stopDm = $('stopAutoDm');
-            var dmStatus = $('dmStatus');
+
+            var autoReplyMsg = $('autoReplyMsg');
+            var replyCooldown = $('replyCooldown');
+            var startReply = $('startAutoReply');
+            var stopReply = $('stopAutoReply');
+            var replyStatus = $('replyStatus');
+            var replyCountEl = $('replyCount');
+            var replyList = $('replyList');
+
             var autoAcceptToggle = $('autoAcceptToggle');
             var acceptedCountEl = $('acceptedCount');
-            var refreshDms = $('refreshDms');
-            var dmList = $('dmList');
             var logContainer = $('logContainer');
             var clearLog = $('clearLog');
             var resetBtn = $('resetBtn');
 
-            // HELPERS
             function log(msg, type) {
                 type = type || 'info';
                 var entry = document.createElement('div');
@@ -605,19 +603,11 @@
             }
 
             function updateSecureUI() {
-                if (secureMode) {
-                    secureToggle.classList.add('active');
-                } else {
-                    secureToggle.classList.remove('active');
-                }
+                secureToggle.classList.toggle('active', secureMode);
             }
 
             function updateAcceptUI() {
-                if (autoAcceptActive) {
-                    autoAcceptToggle.classList.add('active');
-                } else {
-                    autoAcceptToggle.classList.remove('active');
-                }
+                autoAcceptToggle.classList.toggle('active', autoAcceptActive);
             }
 
             function getHeaders() {
@@ -626,4 +616,10 @@
                     'Authorization': TOKEN,
                     'Content-Type': 'application/json',
                     'User-Agent': 'Mozilla/5.0 (Linux; Android 15) AppleWebKit/537.36'
-           
+                };
+                if (secureMode) {
+                    h['X-Super-Properties'] = btoa(JSON.stringify({
+                        os: 'Android',
+                        browser: 'Chrome',
+                        device: 'Pixel 9',
+                        browser_user_agent: '
