@@ -1,0 +1,6 @@
+flask
+flask-socketio
+pyrogram
+TgCrypto
+discord.py
+gunicorn
