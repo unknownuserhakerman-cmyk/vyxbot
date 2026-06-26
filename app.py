@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 from flask_socketio import SocketIO, emit
 import threading
 import asyncio
@@ -6,14 +6,16 @@ import time
 import random
 import string
 import os
+import json
 from datetime import datetime
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static", static_url_path="")
+app.config["SECRET_KEY"] = os.urandom(16).hex()
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# ─── Platform State ───
+# ─── State ───
 state = {
-    "platform": None,           # "discord" | "telegram"
+    "platform": None,
     "discord_token": None,
     "telegram_session": None,
     "telegram_api_id": None,
@@ -26,25 +28,22 @@ state = {
     "image_path": None,
 }
 
-# ─── Anti-Detection Utils ───
+# ─── Anti-Detection ───
 def random_delay(base_interval):
-    """Add jitter: ±40% of base interval with occasional longer pause."""
     jitter = base_interval * random.uniform(0.6, 1.4)
-    # 10% chance of an extra "human pause"
     if random.random() < 0.1:
         jitter += random.uniform(2, 8)
     return jitter
 
 def vary_message(msg):
-    """Add subtle variations to avoid exact-repeat detection."""
     variants = [
         msg,
-        msg + " " + random.choice(["", ".", "..", "!"]),
+        msg + random.choice(["", ".", "..", "!", " ✨", " 🔥"]),
         msg.strip() + " " + random.choice(string.ascii_lowercase),
     ]
     return random.choice(variants)
 
-# ─── Discord Spam Thread ───
+# ─── Discord Spam ───
 def discord_spam_loop():
     import discord
     import asyncio as discord_asyncio
@@ -54,7 +53,7 @@ def discord_spam_loop():
             log(f"Discord connected as {self.user}")
             channel = self.get_channel(int(state["channel_id"]))
             if not channel:
-                log("Channel not found")
+                log("ERROR: Discord channel not found")
                 state["running"] = False
                 await self.close()
                 return
@@ -69,10 +68,9 @@ def discord_spam_loop():
                         await channel.send(content=content)
 
                     log(f"Sent to Discord #{channel.name}")
-                    delay = random_delay(state["interval"])
-                    await discord_asyncio.sleep(delay)
+                    await discord_asyncio.sleep(random_delay(state["interval"]))
                 except Exception as e:
-                    log(f"Discord error: {e}")
+                    log(f"Discord send error: {e}")
                     await discord_asyncio.sleep(5)
 
             await self.close()
@@ -80,7 +78,7 @@ def discord_spam_loop():
     bot = SelfBot()
     bot.run(state["discord_token"], bot=False)
 
-# ─── Telegram Spam Thread ───
+# ─── Telegram Spam ───
 def telegram_spam_loop():
     from pyrogram import Client
 
@@ -101,21 +99,20 @@ def telegram_spam_loop():
                     content = vary_message(state["message"])
                     if state["image_path"] and os.path.exists(state["image_path"]):
                         await app.send_photo(
-                            chat_id=state["channel_id"],
+                            chat_id=int(state["channel_id"]),
                             photo=state["image_path"],
                             caption=content,
                         )
                     else:
                         await app.send_message(
-                            chat_id=state["channel_id"],
+                            chat_id=int(state["channel_id"]),
                             text=content,
                         )
 
                     log(f"Sent to Telegram chat {state['channel_id']}")
-                    delay = random_delay(state["interval"])
-                    await asyncio.sleep(delay)
+                    await asyncio.sleep(random_delay(state["interval"]))
                 except Exception as e:
-                    log(f"Telegram error: {e}")
+                    log(f"Telegram send error: {e}")
                     await asyncio.sleep(5)
 
     asyncio.run(spam())
@@ -129,7 +126,7 @@ def log(msg):
 # ─── Routes ───
 @app.route("/")
 def index():
-    return app.send_static_file("index.html")
+    return send_from_directory("static", "index.html")
 
 @app.route("/api/connect", methods=["POST"])
 def api_connect():
@@ -139,6 +136,7 @@ def api_connect():
     state["telegram_session"] = data.get("telegram_session")
     state["telegram_api_id"] = data.get("telegram_api_id")
     state["telegram_api_hash"] = data.get("telegram_api_hash")
+    log(f"Connected — Platform: {state['platform']}")
     return jsonify({"status": "ok"})
 
 @app.route("/api/start", methods=["POST"])
@@ -147,7 +145,7 @@ def api_start():
     state["channel_id"] = data.get("channel_id")
     state["message"] = data.get("message")
     state["interval"] = float(data.get("interval", 5))
-    state["image_path"] = data.get("image_path")
+    state["image_path"] = data.get("image_path") or None
 
     if state["running"]:
         return jsonify({"status": "error", "msg": "Already running"}), 400
@@ -159,21 +157,47 @@ def api_start():
     elif state["platform"] == "telegram":
         state["thread"] = threading.Thread(target=telegram_spam_loop, daemon=True)
     else:
+        state["running"] = False
         return jsonify({"status": "error", "msg": "No platform selected"}), 400
 
     state["thread"].start()
-    log(f"Started {state['platform']} spam → {state['channel_id']}")
+    log(f"▶ Started {state['platform']} spam → channel {state['channel_id']}")
     return jsonify({"status": "ok"})
 
 @app.route("/api/stop", methods=["POST"])
 def api_stop():
     state["running"] = False
-    log("Stopped all operations")
+    log("■ Stopped all operations")
     return jsonify({"status": "ok"})
 
+@app.route("/api/status", methods=["GET"])
+def api_status():
+    return jsonify({
+        "running": state["running"],
+        "platform": state["platform"],
+    })
+
+# ─── Image Upload ───
+UPLOAD_FOLDER = "uploads"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+@app.route("/api/upload", methods=["POST"])
+def api_upload():
+    if "image" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+    file = request.files["image"]
+    if file.filename == "":
+        return jsonify({"error": "Empty filename"}), 400
+    ext = file.filename.rsplit(".", 1)[-1] if "." in file.filename else "png"
+    name = f"spam_{int(time.time())}.{ext}"
+    path = os.path.join(UPLOAD_FOLDER, name)
+    file.save(path)
+    log(f"Image uploaded: {name}")
+    return jsonify({"path": os.path.abspath(path)})
+
+# ─── Channel Fetching ───
 @app.route("/api/channels/telegram", methods=["POST"])
 def api_telegram_channels():
-    """Fetch user's Telegram chats/channels."""
     from pyrogram import Client
     data = request.json
     results = []
@@ -190,7 +214,7 @@ def api_telegram_channels():
                 if dialog.chat.type in ("channel", "group", "supergroup"):
                     results.append({
                         "id": str(dialog.chat.id),
-                        "title": dialog.chat.title or "Private",
+                        "title": dialog.chat.title or "Private Chat",
                         "type": str(dialog.chat.type),
                     })
         return results
@@ -203,7 +227,6 @@ def api_telegram_channels():
 
 @app.route("/api/channels/discord", methods=["POST"])
 def api_discord_channels():
-    """Fetch guilds and channels the user token has access to."""
     import discord
     import asyncio as da
     data = request.json
@@ -227,6 +250,11 @@ def api_discord_channels():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+# ─── Serve uploaded images ───
+@app.route("/uploads/<filename>")
+def uploaded_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
 if __name__ == "__main__":
-    os.makedirs("static", exist_ok=True)
-    socketio.run(app, host="0.0.0.0", port=5000, debug=False)
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(app, host="0.0.0.0", port=port, debug=False, allow_unsafe_werkzeug=True)
