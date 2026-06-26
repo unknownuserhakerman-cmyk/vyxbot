@@ -14,16 +14,17 @@
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
+            padding: 20px;
         }
         .container {
             background: #161b22;
             border: 1px solid #30363d;
             border-radius: 12px;
             padding: 32px;
-            max-width: 600px;
+            max-width: 620px;
             width: 100%;
-            margin: 20px;
+            margin: 20px auto;
             box-shadow: 0 8px 24px rgba(0,0,0,0.4);
         }
         h1 {
@@ -74,6 +75,12 @@
             color: #fff;
         }
         button.danger:hover { background: #f85149; }
+        button.warning {
+            background: #d29922;
+            border-color: #bb8009;
+            color: #fff;
+        }
+        button.warning:hover { background: #bb8009; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
         .flex-row {
             display: flex;
@@ -138,8 +145,8 @@
         .log-box .log-entry { color: #8b949e; }
         .log-box .log-entry .time { color: #58a6ff; }
         .log-box .log-entry.error { color: #f85149; }
+        .log-box .log-entry.success { color: #3fb950; }
         .hidden { display: none; }
-        .channel-select { margin-bottom: 8px; }
         .status-indicator {
             display: inline-block;
             width: 8px;
@@ -150,24 +157,43 @@
         }
         .status-indicator.online { background: #3fb950; box-shadow: 0 0 6px #3fb950; }
         .status-indicator.offline { background: #f85149; }
-        .loading-dots::after {
-            content: '';
-            animation: dots 1.5s steps(3, end) infinite;
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
         }
-        @keyframes dots {
-            0%   { content: ''; }
-            33%  { content: '.'; }
-            66%  { content: '..'; }
-            100% { content: '...'; }
+        .header-row h1 { margin-bottom: 0; }
+        .logout-btn {
+            width: auto;
+            padding: 6px 16px;
+            font-size: 12px;
+            background: transparent;
+            border-color: #f85149;
+            color: #f85149;
+        }
+        .logout-btn:hover { background: #da3633; color: #fff; }
+        .connected-user {
+            font-size: 13px;
+            color: #8b949e;
+            margin-top: 4px;
+        }
+        .divider {
+            border: none;
+            border-top: 1px solid #30363d;
+            margin: 16px 0;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>VYX <span>BOT</span> v4.0</h1>
+        <div class="header-row">
+            <h1>VYX <span>BOT</span> v4.0</h1>
+            <button id="logoutBtn" class="logout-btn hidden">Logout</button>
+        </div>
 
         <!-- Platform -->
-        <div class="section">
+        <div class="section" id="platformSection">
             <div class="section-title">Platform</div>
             <select id="platform">
                 <option value="">-- Select Platform --</option>
@@ -205,6 +231,7 @@
                 <span class="status-indicator offline" id="statusDot"></span>
                 <span id="statusText">Connect</span>
             </button>
+            <div id="connectedUser" class="connected-user hidden"></div>
         </div>
 
         <!-- Spam config -->
@@ -231,7 +258,25 @@
             </div>
         </div>
 
+        <!-- Auto-Reply -->
+        <hr class="divider">
+        <div class="section">
+            <div class="section-title">Auto-Reply Mode (Telegram only)</div>
+            <div class="toggle-row" style="margin-bottom:8px;">
+                <span class="toggle-label">Auto-Reply</span>
+                <span style="display:flex;align-items:center;gap:10px;">
+                    <span id="autoReplyState" style="font-size:13px;color:#8b949e;">OFF</span>
+                    <div class="toggle-switch" id="autoReplyToggle"></div>
+                </span>
+            </div>
+            <div class="hidden" id="autoReplyConfig">
+                <textarea id="autoReplyMessage" rows="2" placeholder="Auto-reply message when someone messages you..."></textarea>
+                <button id="autoReplySaveBtn" class="warning" style="margin-top:8px;" disabled>Save &amp; Enable Auto-Reply</button>
+            </div>
+        </div>
+
         <!-- Activity Log -->
+        <hr class="divider">
         <div class="section">
             <div class="section-title">Activity Log</div>
             <div class="log-box" id="logBox">
