@@ -5,6 +5,7 @@ import asyncio
 import random
 import string
 import os
+import time                                     # was missing
 from datetime import datetime
 
 app = Flask(__name__, static_folder="static", static_url_path="")
@@ -119,7 +120,19 @@ def api_connect():
     state["telegram_api_id"] = d.get("telegram_api_id")
     state["telegram_api_hash"] = d.get("telegram_api_hash")
     log(f"Connected — {state['platform']}")
-    return jsonify({"status": "ok"})
+    return jsonify({"status": "ok", "platform": state["platform"]})
+
+@app.route("/api/session", methods=["GET"])
+def api_session():
+    """Returns current session info. Frontend uses this to restore on page load."""
+    if state["platform"]:
+        return jsonify({
+            "connected": True,
+            "platform": state["platform"],
+            "has_discord_token": bool(state["discord_token"]),
+            "has_telegram": bool(state["telegram_api_id"] and state["telegram_api_hash"] and state["telegram_session"]),
+        })
+    return jsonify({"connected": False})
 
 @app.route("/api/start", methods=["POST"])
 def api_start():
@@ -217,7 +230,3 @@ def uploaded(filename):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port, debug=False, allow_unsafe_werkzeug=True)
-import os
-
-api_id = int(os.getenv("API_ID"))
-api_hash = os.getenv("API_HASH")
