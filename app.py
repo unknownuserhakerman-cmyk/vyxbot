@@ -217,3 +217,7 @@ def uploaded(filename):
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host="0.0.0.0", port=port, debug=False, allow_unsafe_werkzeug=True)
+import os
+
+api_id = int(os.getenv("API_ID"))
+api_hash = os.getenv("API_HASH")
