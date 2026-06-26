@@ -4,3 +4,5 @@ pyrogram
 TgCrypto
 discord.py
 gunicorn
+gevent
+gevent-websocket
