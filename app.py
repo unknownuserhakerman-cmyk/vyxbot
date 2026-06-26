@@ -5,7 +5,7 @@ import asyncio
 import random
 import string
 import os
-import time                                     # was missing
+import time
 from datetime import datetime
 
 app = Flask(__name__, static_folder="static", static_url_path="")
@@ -24,7 +24,12 @@ state = {
     "message": "",
     "interval": 5,
     "image_path": None,
+    "auto_reply": False,
+    "auto_reply_message": "",
+    "auto_reply_thread": None,
 }
+
+# ─── Utility ───
 
 def random_delay(base_interval):
     jitter = base_interval * random.uniform(0.6, 1.4)
@@ -39,6 +44,48 @@ def vary_message(msg):
         msg.strip() + " " + random.choice(string.ascii_lowercase),
     ]
     return random.choice(variants)
+
+def log(msg):
+    t = datetime.now().strftime("%H:%M:%S")
+    print(f"[{t}] {msg}")
+    socketio.emit("log", {"time": t, "msg": msg})
+
+# ─── Test Telegram connection ───
+
+def test_telegram_connection(api_id, api_hash, session_string):
+    """Returns (success, user_name_or_error)"""
+    from pyrogram import Client
+    result = []
+    async def _test():
+        try:
+            app = Client(":memory:", api_id=api_id, api_hash=api_hash, session_string=session_string)
+            async with app:
+                me = await app.get_me()
+                result.append((True, me.first_name or me.username or str(me.id)))
+        except Exception as e:
+            result.append((False, str(e)))
+    asyncio.run(_test())
+    return result[0] if result else (False, "No response from Telegram")
+
+def test_discord_connection(token):
+    """Returns (success, user_name_or_error)"""
+    import discord
+    import asyncio as da
+    result = []
+    class Tester(discord.Client):
+        async def on_ready(self):
+            result.append((True, str(self.user)))
+            await self.close()
+        async def on_error(self, *a):
+            result.append((False, "Discord error"))
+            await self.close()
+    try:
+        Tester().run(token, bot=False)
+        return result[0] if result else (False, "No response from Discord")
+    except Exception as e:
+        return (False, str(e))
+
+# ─── Spam Loops ───
 
 def discord_spam_loop():
     import discord
@@ -102,10 +149,44 @@ def telegram_spam_loop():
                     await asyncio.sleep(5)
     asyncio.run(spam())
 
-def log(msg):
-    t = datetime.now().strftime("%H:%M:%S")
-    print(f"[{t}] {msg}")
-    socketio.emit("log", {"time": t, "msg": msg})
+# ─── Auto-Reply Loop ───
+
+def auto_reply_loop():
+    """Background thread that listens for incoming messages and auto-replies."""
+    from pyrogram import Client, filters
+    import asyncio as aio
+
+    async def _run():
+        app = Client(
+            "auto_reply_session",
+            api_id=state["telegram_api_id"],
+            api_hash=state["telegram_api_hash"],
+            session_string=state["telegram_session"],
+        )
+
+        @app.on_message(filters.private & ~filters.me)
+        async def handler(client, msg):
+            if not state.get("auto_reply"):
+                return  # disabled while running
+            reply_text = state.get("auto_reply_message") or "I'm busy right now."
+            try:
+                await msg.reply(reply_text)
+                name = msg.from_user.first_name if msg.from_user else "Unknown"
+                log(f"Auto-replied to {name}: {reply_text[:50]}")
+            except Exception as e:
+                log(f"Auto-reply error: {e}")
+
+        log("Auto-reply listener started")
+        await app.run()  # runs until disconnected
+
+    try:
+        loop = aio.new_event_loop()
+        aio.set_event_loop(loop)
+        loop.run_until_complete(_run())
+    except Exception as e:
+        log(f"Auto-reply stopped: {e}")
+
+# ─── Routes ───
 
 @app.route("/")
 def index():
@@ -114,23 +195,64 @@ def index():
 @app.route("/api/connect", methods=["POST"])
 def api_connect():
     d = request.json
-    state["platform"] = d.get("platform")
-    state["discord_token"] = d.get("discord_token")
-    state["telegram_session"] = d.get("telegram_session")
-    state["telegram_api_id"] = d.get("telegram_api_id")
-    state["telegram_api_hash"] = d.get("telegram_api_hash")
-    log(f"Connected — {state['platform']}")
-    return jsonify({"status": "ok", "platform": state["platform"]})
+    platform = d.get("platform")
+
+    if platform == "telegram":
+        api_id_val = d.get("telegram_api_id")
+        api_hash_val = d.get("telegram_api_hash")
+        session_val = d.get("telegram_session")
+        if not api_id_val or not api_hash_val or not session_val:
+            return jsonify({"status": "error", "msg": "All Telegram fields required"}), 400
+        success, info = test_telegram_connection(api_id_val, api_hash_val, session_val)
+        if not success:
+            return jsonify({"status": "error", "msg": f"Telegram connection failed: {info}"}), 400
+        state["platform"] = "telegram"
+        state["telegram_api_id"] = api_id_val
+        state["telegram_api_hash"] = api_hash_val
+        state["telegram_session"] = session_val
+        log(f"Connected — Telegram as {info}")
+        return jsonify({"status": "ok", "user": info, "platform": "telegram"})
+
+    elif platform == "discord":
+        token = d.get("discord_token")
+        if not token:
+            return jsonify({"status": "error", "msg": "Discord token required"}), 400
+        success, info = test_discord_connection(token)
+        if not success:
+            return jsonify({"status": "error", "msg": f"Discord connection failed: {info}"}), 400
+        state["platform"] = "discord"
+        state["discord_token"] = token
+        log(f"Connected — Discord as {info}")
+        return jsonify({"status": "ok", "user": info, "platform": "discord"})
+
+    return jsonify({"status": "error", "msg": "No platform specified"}), 400
+
+@app.route("/api/disconnect", methods=["POST"])
+def api_disconnect():
+    """Logout — clear everything."""
+    # Stop any running spam
+    state["running"] = False
+    state["auto_reply"] = False
+
+    state["platform"] = None
+    state["discord_token"] = None
+    state["telegram_session"] = None
+    state["telegram_api_id"] = None
+    state["telegram_api_hash"] = None
+    state["channel_id"] = None
+    state["message"] = ""
+    state["interval"] = 5
+    state["image_path"] = None
+
+    log("Disconnected — all credentials cleared")
+    return jsonify({"status": "ok"})
 
 @app.route("/api/session", methods=["GET"])
 def api_session():
-    """Returns current session info. Frontend uses this to restore on page load."""
     if state["platform"]:
         return jsonify({
             "connected": True,
             "platform": state["platform"],
-            "has_discord_token": bool(state["discord_token"]),
-            "has_telegram": bool(state["telegram_api_id"] and state["telegram_api_hash"] and state["telegram_session"]),
         })
     return jsonify({"connected": False})
 
@@ -163,7 +285,43 @@ def api_stop():
 
 @app.route("/api/status", methods=["GET"])
 def api_status():
-    return jsonify({"running": state["running"], "platform": state["platform"]})
+    return jsonify({
+        "running": state["running"],
+        "platform": state["platform"],
+        "auto_reply": state.get("auto_reply", False),
+    })
+
+# ─── Auto-reply endpoints ───
+
+@app.route("/api/auto-reply/start", methods=["POST"])
+def api_auto_reply_start():
+    d = request.json
+    message = d.get("message", "").strip()
+    if not message:
+        return jsonify({"status": "error", "msg": "Auto-reply message cannot be empty"}), 400
+    if state["platform"] != "telegram":
+        return jsonify({"status": "error", "msg": "Auto-reply is only available for Telegram"}), 400
+
+    state["auto_reply_message"] = message
+    state["auto_reply"] = True
+
+    if not state.get("auto_reply_thread") or not state["auto_reply_thread"].is_alive():
+        t = threading.Thread(target=auto_reply_loop, daemon=True)
+        state["auto_reply_thread"] = t
+        t.start()
+        log(f"Auto-reply enabled: \"{message[:50]}...\"")
+    else:
+        log("Auto-reply already running, updated message")
+
+    return jsonify({"status": "ok"})
+
+@app.route("/api/auto-reply/stop", methods=["POST"])
+def api_auto_reply_stop():
+    state["auto_reply"] = False
+    log("Auto-reply disabled")
+    return jsonify({"status": "ok"})
+
+# ─── Upload ───
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -179,53 +337,68 @@ def api_upload():
     log(f"Image uploaded")
     return jsonify({"path": os.path.abspath(path)})
 
+@app.route("/uploads/<filename>")
+def uploaded(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
+
+# ─── Channel Loading ───
+
 @app.route("/api/channels/telegram", methods=["POST"])
 def api_tg_channels():
     from pyrogram import Client
     d = request.json
     r = []
+    errors = []
     async def fetch():
-        app = Client(
-            ":memory:",
-            api_id=d["api_id"],
-            api_hash=d["api_hash"],
-            session_string=d["session"],
-        )
-        async with app:
-            async for dialog in app.get_dialogs():
-                if dialog.chat.type in ("channel", "group", "supergroup"):
-                    r.append({
-                        "id": str(dialog.chat.id),
-                        "title": dialog.chat.title or "Private",
-                        "type": str(dialog.chat.type),
-                    })
+        try:
+            app = Client(
+                ":memory:",
+                api_id=d["api_id"],
+                api_hash=d["api_hash"],
+                session_string=d["session"],
+            )
+            async with app:
+                async for dialog in app.get_dialogs():
+                    if dialog.chat.type in ("channel", "group", "supergroup"):
+                        r.append({
+                            "id": str(dialog.chat.id),
+                            "title": dialog.chat.title or "Private",
+                            "type": str(dialog.chat.type),
+                        })
+        except Exception as e:
+            errors.append(str(e))
     try:
         asyncio.run(fetch())
+        if errors:
+            return jsonify({"error": errors[0]}), 400
         return jsonify({"channels": r})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
 @app.route("/api/channels/discord", methods=["POST"])
 def api_dc_channels():
-    import discord, asyncio as da
+    import discord
+    import asyncio as da
     d = request.json
     r = []
+    errors = []
     class Lister(discord.Client):
         async def on_ready(self):
-            nonlocal r
-            for g in self.guilds:
-                for ch in g.text_channels:
-                    r.append({"id": str(ch.id), "name": f"{g.name} / #{ch.name}"})
+            try:
+                nonlocal r
+                for g in self.guilds:
+                    for ch in g.text_channels:
+                        r.append({"id": str(ch.id), "name": f"{g.name} / #{ch.name}"})
+            except Exception as e:
+                errors.append(str(e))
             await self.close()
     try:
         Lister().run(d["token"], bot=False)
+        if errors:
+            return jsonify({"error": errors[0]}), 400
         return jsonify({"channels": r})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-
-@app.route("/uploads/<filename>")
-def uploaded(filename):
-    return send_from_directory(UPLOAD_FOLDER, filename)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
