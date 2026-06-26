@@ -1,290 +1,632 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VYXBOT v4.0</title>
-    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #0d1117;
-            color: #c9d1d9;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding: 20px;
-        }
-        .container {
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 12px;
-            padding: 32px;
-            max-width: 620px;
-            width: 100%;
-            margin: 20px auto;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-        }
-        h1 {
-            text-align: center;
-            color: #58a6ff;
-            font-size: 28px;
-            margin-bottom: 24px;
-            letter-spacing: 1px;
-        }
-        h1 span { color: #f0883e; }
-        .section { margin-bottom: 20px; }
-        .section-title {
-            font-size: 13px;
-            text-transform: uppercase;
-            color: #8b949e;
-            margin-bottom: 8px;
-            letter-spacing: 0.5px;
-        }
-        select, input, textarea, button {
-            width: 100%;
-            padding: 10px 14px;
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            color: #c9d1d9;
-            font-size: 14px;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-        select:focus, input:focus, textarea:focus { border-color: #58a6ff; }
-        button {
-            background: #21262d;
-            border: 1px solid #30363d;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-        button:hover { background: #30363d; border-color: #8b949e; }
-        button.primary {
-            background: #238636;
-            border-color: #2ea043;
-            color: #fff;
-        }
-        button.primary:hover { background: #2ea043; }
-        button.danger {
-            background: #da3633;
-            border-color: #f85149;
-            color: #fff;
-        }
-        button.danger:hover { background: #f85149; }
-        button.warning {
-            background: #d29922;
-            border-color: #bb8009;
-            color: #fff;
-        }
-        button.warning:hover { background: #bb8009; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .flex-row {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        .flex-row select { flex: 1; }
-        .flex-row button { width: auto; padding: 10px 20px; white-space: nowrap; }
-        .tg-fields, .dc-fields { display: none; }
-        .tg-fields.active, .dc-fields.active { display: block; }
-        .tg-fields input, .dc-fields input { margin-bottom: 8px; }
-        .tg-fields input:last-child, .dc-fields input:last-child { margin-bottom: 0; }
-        .toggle-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            padding: 10px 14px;
-        }
-        .toggle-label { font-size: 14px; }
-        .toggle-switch {
-            width: 44px;
-            height: 24px;
-            background: #30363d;
-            border-radius: 12px;
-            position: relative;
-            cursor: pointer;
-            transition: background 0.3s;
-            flex-shrink: 0;
-        }
-        .toggle-switch.active { background: #238636; }
-        .toggle-switch::after {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 20px;
-            height: 20px;
-            background: #fff;
-            border-radius: 50%;
-            transition: transform 0.3s;
-        }
-        .toggle-switch.active::after { transform: translateX(20px); }
-        .action-row {
-            display: flex;
-            gap: 10px;
-        }
-        .action-row button { flex: 1; }
-        .log-box {
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 8px;
-            height: 200px;
-            overflow-y: auto;
-            padding: 12px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            line-height: 1.6;
-        }
-        .log-box .log-entry { color: #8b949e; }
-        .log-box .log-entry .time { color: #58a6ff; }
-        .log-box .log-entry.error { color: #f85149; }
-        .log-box .log-entry.success { color: #3fb950; }
-        .hidden { display: none; }
-        .status-indicator {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 6px;
-            vertical-align: middle;
-        }
-        .status-indicator.online { background: #3fb950; box-shadow: 0 0 6px #3fb950; }
-        .status-indicator.offline { background: #f85149; }
-        .header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
-        .header-row h1 { margin-bottom: 0; }
-        .logout-btn {
-            width: auto;
-            padding: 6px 16px;
-            font-size: 12px;
-            background: transparent;
-            border-color: #f85149;
-            color: #f85149;
-        }
-        .logout-btn:hover { background: #da3633; color: #fff; }
-        .connected-user {
-            font-size: 13px;
-            color: #8b949e;
-            margin-top: 4px;
-        }
-        .divider {
-            border: none;
-            border-top: 1px solid #30363d;
-            margin: 16px 0;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VYXBOT v4.0 — Elite Dashboard</title>
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-card: #1a1a2e;
+  --bg-input: #0f0f1a;
+  --border: #2a2a4a;
+  --border-glow: #6c5ce7;
+  --text-primary: #e8e8f0;
+  --text-secondary: #8888aa;
+  --accent: #6c5ce7;
+  --accent-hover: #7c6cf7;
+  --success: #00d68f;
+  --danger: #ff4757;
+  --warning: #ffa502;
+  --glow: rgba(108, 92, 231, 0.3);
+}
+
+body {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 20px;
+  background-image:
+    radial-gradient(ellipse at 20% 50%, rgba(108, 92, 231, 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 50%, rgba(0, 214, 143, 0.05) 0%, transparent 50%);
+}
+
+.container {
+  max-width: 680px;
+  width: 100%;
+  margin: 20px auto;
+}
+
+/* ─── Login Panel ─── */
+.login-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 0 40px rgba(108, 92, 231, 0.1), 0 20px 60px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s ease;
+}
+
+.login-panel h1 {
+  text-align: center;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe, #6c5ce7);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.login-panel .subtitle {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  margin-bottom: 30px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+.login-panel .section-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.login-panel select,
+.login-panel input {
+  width: 100%;
+  padding: 14px 18px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.login-panel select:focus,
+.login-panel input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 20px var(--glow);
+}
+
+.login-panel select { margin-bottom: 20px; }
+.dc-fields, .tg-fields { display: none; }
+.dc-fields.active, .tg-fields.active { display: block; }
+.dc-fields input, .tg-fields input { margin-bottom: 10px; }
+
+.login-panel .connect-btn {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--accent), #a29bfe);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  margin-top: 6px;
+}
+
+.login-panel .connect-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px var(--glow), 0 10px 30px rgba(108, 92, 231, 0.3);
+}
+
+.login-panel .connect-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.login-panel .connect-btn::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255,255,255,0.05), transparent);
+  transform: rotate(45deg);
+  animation: btnShine 4s ease-in-out infinite;
+}
+
+@keyframes btnShine {
+  0%, 100% { transform: translateX(-100%) rotate(45deg); }
+  50% { transform: translateX(100%) rotate(45deg); }
+}
+
+/* ─── Dashboard (shown when connected) ─── */
+.dashboard { display: none; }
+.dashboard.active { display: block; }
+
+.dashboard .top-bar {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 20px 28px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  box-shadow: 0 0 30px rgba(108, 92, 231, 0.08);
+  animation: fadeSlideIn 0.5s ease;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dashboard .avatar {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #a29bfe);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  overflow: hidden;
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 20px var(--glow);
+}
+
+.dashboard .avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.dashboard .user-info { flex: 1; }
+.dashboard .user-info .name {
+  font-size: 18px;
+  font-weight: 700;
+}
+.dashboard .user-info .username {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.dashboard .user-info .platform-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 6px;
+  margin-top: 4px;
+  background: rgba(108, 92, 231, 0.2);
+  color: var(--accent);
+  border: 1px solid rgba(108, 92, 231, 0.3);
+}
+
+.dashboard .logout-btn {
+  padding: 8px 18px;
+  background: transparent;
+  border: 1px solid rgba(255, 71, 87, 0.4);
+  border-radius: 10px;
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.dashboard .logout-btn:hover {
+  background: rgba(255, 71, 87, 0.1);
+  border-color: var(--danger);
+  box-shadow: 0 0 20px rgba(255, 71, 87, 0.2);
+}
+
+/* ─── Dashboard Cards ─── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px 24px;
+  margin-bottom: 16px;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+  animation: fadeSlideIn 0.5s ease;
+}
+
+.card .card-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+
+.card select, .card input, .card textarea {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.card select:focus, .card input:focus, .card textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 15px var(--glow);
+}
+
+.card textarea {
+  resize: vertical;
+  min-height: 70px;
+}
+
+.card .flex-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.card .flex-row select { flex: 1; }
+
+/* ─── Buttons ─── */
+.btn {
+  padding: 11px 20px;
+  border: none;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #a29bfe);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 0 25px var(--glow);
+}
+
+.btn-success {
+  background: linear-gradient(135deg, var(--success), #00e6a0);
+  color: #fff;
+}
+
+.btn-success:hover:not(:disabled) {
+  box-shadow: 0 0 25px rgba(0, 214, 143, 0.4);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, var(--danger), #ff6b81);
+  color: #fff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  box-shadow: 0 0 25px rgba(255, 71, 87, 0.4);
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, var(--warning), #ffbe44);
+  color: #fff;
+}
+
+.btn-warning:hover:not(:disabled) {
+  box-shadow: 0 0 25px rgba(255, 165, 2, 0.4);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.btn-sm {
+  padding: 8px 16px;
+  font-size: 12px;
+}
+
+.btn-block {
+  width: 100%;
+}
+
+/* ─── Toggle ─── */
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.toggle-switch {
+  width: 46px;
+  height: 26px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.toggle-switch.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 15px var(--glow);
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  transition: transform 0.3s ease;
+}
+
+.toggle-switch.active::after {
+  transform: translateX(20px);
+}
+
+/* ─── Log Box ─── */
+.log-box {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  height: 220px;
+  overflow-y: auto;
+  padding: 14px 16px;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.log-box::-webkit-scrollbar {
+  width: 4px;
+}
+
+.log-box::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.log-box::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+
+.log-entry { color: var(--text-secondary); }
+.log-entry .time { color: var(--accent); }
+.log-entry.error { color: var(--danger); }
+.log-entry.success { color: var(--success); }
+
+/* ─── Animations ─── */
+.glow-pulse {
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 10px var(--glow); }
+  50% { box-shadow: 0 0 30px var(--glow), 0 0 60px rgba(108, 92, 231, 0.1); }
+}
+
+/* ─── States ─── */
+.hidden { display: none !important; }
+.mt-2 { margin-top: 10px; }
+.mt-3 { margin-top: 16px; }
+.mb-2 { margin-bottom: 10px; }
+.gap-2 { gap: 10px; }
+
+/* ─── Spam toggle row inside card ─── */
+.spam-toggle-content { display: none; }
+.spam-toggle-content.active { display: block; margin-top: 14px; }
+
+/* ─── Auto-reply ─── */
+.auto-reply-content { display: none; }
+.auto-reply-content.active { display: block; margin-top: 14px; }
+
+/* ─── Status indicator dots ─── */
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.dot.online {
+  background: var(--success);
+  box-shadow: 0 0 10px rgba(0, 214, 143, 0.6);
+}
+
+.dot.offline {
+  background: var(--danger);
+}
+
+/* ─── Logo text ─── */
+.logo-text {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  background: linear-gradient(135deg, var(--accent), #a29bfe, var(--accent));
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 3s ease-in-out infinite;
+  display: inline-block;
+}
+
+/* ─── Responsive ─── */
+@media (max-width: 500px) {
+  .login-panel { padding: 24px; }
+  .card { padding: 18px; }
+  .dashboard .top-bar { padding: 16px 20px; }
+  .card .flex-row { flex-wrap: wrap; }
+  .card .flex-row select { flex: 1 1 100%; }
+  .card .flex-row .btn { flex: 1; }
+}
+</style>
 </head>
 <body>
-    <div class="container">
-        <div class="header-row">
-            <h1>VYX <span>BOT</span> v4.0</h1>
-            <button id="logoutBtn" class="logout-btn hidden">Logout</button>
-        </div>
 
-        <!-- Platform -->
-        <div class="section" id="platformSection">
-            <div class="section-title">Platform</div>
-            <select id="platform">
-                <option value="">-- Select Platform --</option>
-                <option value="telegram">Telegram</option>
-                <option value="discord">Discord</option>
-            </select>
-        </div>
+<div class="container">
 
-        <!-- Channels -->
-        <div class="section">
-            <div class="section-title">Channels</div>
-            <div class="flex-row">
-                <select id="channelSelect" class="channel-select" disabled>
-                    <option value="">-- Load channels first --</option>
-                </select>
-                <button id="loadChannelsBtn" disabled>Load Channels</button>
-            </div>
-        </div>
+  <!-- ═══ LOGIN PANEL ═══ -->
+  <div class="login-panel" id="loginPanel">
+    <div class="logo-text">VYXBOT</div>
+    <div class="subtitle">v4.0 · Elite Control Panel</div>
 
-        <!-- Auth -->
-        <div class="section" id="authSection">
-            <div class="section-title">Authentication</div>
+    <div class="section-title" style="margin-top:6px;">Platform</div>
+    <select id="platform">
+      <option value="">— Select Platform —</option>
+      <option value="telegram">Telegram</option>
+      <option value="discord">Discord</option>
+    </select>
 
-            <div class="dc-fields" id="dcFields">
-                <input type="password" id="discordToken" placeholder="Discord User Token">
-            </div>
-
-            <div class="tg-fields" id="tgFields">
-                <input type="number" id="apiId" placeholder="API ID">
-                <input type="text" id="apiHash" placeholder="API Hash">
-                <input type="password" id="sessionString" placeholder="Session String">
-            </div>
-
-            <button id="connectBtn" class="primary" disabled>
-                <span class="status-indicator offline" id="statusDot"></span>
-                <span id="statusText">Connect</span>
-            </button>
-            <div id="connectedUser" class="connected-user hidden"></div>
-        </div>
-
-        <!-- Spam config -->
-        <div class="section">
-            <div class="section-title">Spam Configuration</div>
-            <div class="toggle-row">
-                <span class="toggle-label">Spam Target</span>
-                <span style="display:flex;align-items:center;gap:10px;">
-                    <span id="spamState" style="font-size:13px;color:#8b949e;">OFF</span>
-                    <div class="toggle-switch" id="spamToggle"></div>
-                </span>
-            </div>
-        </div>
-
-        <div class="section hidden" id="spamConfig">
-            <textarea id="messageInput" rows="3" placeholder="Channel Message (optional)"></textarea>
-            <div class="flex-row" style="margin-top:8px;">
-                <input type="file" id="imageInput" accept="image/*" style="flex:1;">
-                <input type="number" id="intervalInput" placeholder="Interval (s)" value="5" min="1" style="width:100px;">
-            </div>
-            <div class="action-row" style="margin-top:10px;">
-                <button id="startBtn" class="primary" disabled>▶ Start</button>
-                <button id="stopBtn" class="danger" disabled>■ Stop</button>
-            </div>
-        </div>
-
-        <!-- Auto-Reply -->
-        <hr class="divider">
-        <div class="section">
-            <div class="section-title">Auto-Reply Mode (Telegram only)</div>
-            <div class="toggle-row" style="margin-bottom:8px;">
-                <span class="toggle-label">Auto-Reply</span>
-                <span style="display:flex;align-items:center;gap:10px;">
-                    <span id="autoReplyState" style="font-size:13px;color:#8b949e;">OFF</span>
-                    <div class="toggle-switch" id="autoReplyToggle"></div>
-                </span>
-            </div>
-            <div class="hidden" id="autoReplyConfig">
-                <textarea id="autoReplyMessage" rows="2" placeholder="Auto-reply message when someone messages you..."></textarea>
-                <button id="autoReplySaveBtn" class="warning" style="margin-top:8px;" disabled>Save &amp; Enable Auto-Reply</button>
-            </div>
-        </div>
-
-        <!-- Activity Log -->
-        <hr class="divider">
-        <div class="section">
-            <div class="section-title">Activity Log</div>
-            <div class="log-box" id="logBox">
-                <div class="log-entry">── Ready ──</div>
-            </div>
-        </div>
+    <div class="dc-fields" id="dcFields">
+      <div class="section-title">Discord Token</div>
+      <input type="password" id="discordToken" placeholder="Paste your Discord user token">
     </div>
 
-    <script src="/app.js"></script>
+    <div class="tg-fields" id="tgFields">
+      <div class="section-title">API ID</div>
+      <input type="number" id="apiId" placeholder="e.g. 12345678">
+      <div class="section-title">API Hash</div>
+      <input type="text" id="apiHash" placeholder="Your Telegram API hash">
+      <div class="section-title">Session String</div>
+      <input type="password" id="sessionString" placeholder="Pyrogram session string">
+    </div>
+
+    <button class="connect-btn" id="connectBtn" disabled>
+      <span class="dot offline" id="statusDot"></span>
+      <span id="statusText">Connect</span>
+    </button>
+  </div>
+
+  <!-- ═══ DASHBOARD ═══ -->
+  <div class="dashboard" id="dashboard">
+
+    <!-- Top Bar -->
+    <div class="top-bar">
+      <div class="avatar" id="avatarContainer">
+        <img id="avatarImg" style="display:none;" alt="Profile">
+        <span id="avatarInitials">?</span>
+      </div>
+      <div class="user-info">
+        <div class="name" id="displayName">Loading...</div>
+        <div class="username" id="displayUsername">@...</div>
+        <div class="platform-badge" id="platformBadge">Telegram</div>
+      </div>
+      <button class="logout-btn" id="logoutBtn">✕ Logout</button>
+    </div>
+
+    <!-- Channels Card -->
+    <div class="card">
+      <div class="card-title">Channels</div>
+      <div class="flex-row">
+        <select id="channelSelect" disabled>
+          <option value="">— Loading channels... —</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="loadChannelsBtn">⟳</button>
+      </div>
+    </div>
+
+    <!-- Spam Card -->
+    <div class="card">
+      <div class="toggle-row">
+        <div>
+          <div class="card-title" style="margin-bottom:0;">Spam Engine</div>
+          <span style="font-size:12px;color:var(--text-secondary);">Auto-message sender</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span id="spamState" style="font-size:12px;color:var(--text-secondary);font-weight:600;">OFF</span>
+          <div class="toggle-switch" id="spamToggle"></div>
+        </div>
+      </div>
+      <div class="spam-toggle-content" id="spamConfig">
+        <textarea id="messageInput" rows="3" placeholder="Message to send (optional)"></textarea>
+        <div class="flex-row mt-2">
+          <input type="file" id="imageInput" accept="image/*" style="flex:1;">
+          <input type="number" id="intervalInput" placeholder="Interval (s)" value="5" min="1" style="width:90px;">
+        </div>
+        <div class="flex-row mt-2 gap-2">
+          <button class="btn btn-success" id="startBtn" disabled style="flex:1;">▶ Start</button>
+          <button class="btn btn-danger" id="stopBtn" disabled style="flex:1;">■ Stop</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Auto-Reply Card -->
+    <div class="card">
+      <div class="toggle-row">
+        <div>
+          <div class="card-title" style="margin-bottom:0;">Auto-Reply</div>
+          <span style="font-size:12px;color:var(--text-secondary);">Auto-answer private messages</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span id="autoReplyState" style="font-size:12px;color:var(--text-secondary);font-weight:600;">OFF</span>
+          <div class="toggle-switch" id="autoReplyToggle"></div>
+        </div>
+      </div>
+      <div class="auto-reply-content" id="autoReplyConfig">
+        <textarea id="autoReplyMessage" rows="2" placeholder="Enter your auto-reply message..."></textarea>
+        <button class="btn btn-warning btn-block mt-2" id="autoReplySaveBtn" disabled>Save & Enable</button>
+      </div>
+    </div>
+
+    <!-- Activity Log Card -->
+    <div class="card">
+      <div class="card-title">Activity Log</div>
+      <div class="log-box" id="logBox">
+        <div class="log-entry"><span class="time">[--:--:--]</span> ── Ready ──</div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="/app.js"></script>
 </body>
-</html>
+            </html>
